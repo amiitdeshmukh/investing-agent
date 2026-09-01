@@ -1,0 +1,1 @@
+"""Investing Agent FastAPI application."""
