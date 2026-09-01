@@ -1,5 +1,8 @@
 # Agent Design
 
+**Target-state contract.** No LLM, LangGraph, vector store, reflection, debate,
+or RL policy is implemented in the foundation repository.
+
 ## Purpose and boundary
 
 The agent converts a normalized evidence bundle into a structured market
@@ -69,3 +72,53 @@ and rollback selects a prior version rather than rewriting history.
 An agent version is judged by risk-adjusted return, maximum drawdown, win rate,
 turnover, benchmark delta, reward distribution, and confidence calibration.
 Backtest results are always labelled separately from live paper performance.
+
+## Context and leakage rules
+
+Context assembly is deterministic and records an as-of time. It excludes future
+information in scheduled decisions and backtests. Missing/stale inputs are
+explicit. Retrieved entries include stable IDs so usage is auditable.
+
+## Orchestration sequence
+
+1. Load the immutable active agent version.
+2. Build/identify the evidence bundle and as-of time.
+3. Invoke the configured model with bounded timeout/retries.
+4. Validate strict structured output.
+5. Persist the decision, including holds.
+6. Send only actionable valid proposals to risk.
+7. Emit `new_decision` after persistence.
+
+Model/provider failure cannot create a trade. Retries use correlation IDs and
+cannot duplicate an accepted decision. Reasoning is audit text; it is never
+parsed as an order, provider command, or risk override.
+
+## Reflection and retrieval rules
+
+Reflection receives deterministic reward and cannot alter it. Lessons identify
+evidence, process quality, and a bounded future heuristic without unsupported
+causality. References are human-added content; lessons originate from closed
+trades. Retrieval returns stable IDs/scores, avoids future leakage, and treats
+PostgreSQL as truth with Chroma rebuildable. Retrieval failure is surfaced,
+never replaced with fabricated memory.
+
+## Debate and RL constraints
+
+Debate traces are diagnostics; only the synthesis output is an executable
+proposal. RL training data is versioned/time-split and uses the same fees,
+slippage, availability, and no-lookahead behavior as backtesting. Promotion
+requires out-of-sample evidence and explicit human activation.
+
+## Privacy and adversarial content
+
+Prompts exclude credentials and unnecessary account data. Logs record version,
+latency, cost metadata, schema failures, retrieval IDs, and correlations without
+secrets. Instructions embedded in news/references are untrusted data and cannot
+redefine system rules, tools, risk, or mode.
+
+## Completion gates
+
+The reflection phase requires strict schemas, decision audit, bounded failure,
+deterministic fixtures, hold/rejection logging, and tested risk handoff. Debate,
+RL, and version promotion have separate later gates and are not advertised
+early. Calibration uses 0–10% through 90–100% buckets and exposes sample counts.

@@ -61,7 +61,41 @@ UI, deployment, and decision contracts live under `docs/`. These documents
 describe the target system; code is added in the phase order defined by the
 project specification.
 
+Documentation map:
+
+- [`PROJECT.md`](PROJECT.md) — scope, locked stack, safety, and phase order.
+- [`AGENTS.md`](AGENTS.md) — mandatory coding-agent workflow.
+- [`docs/README.md`](docs/README.md) — source-of-truth and reading guide.
+- [`docs/architecture.md`](docs/architecture.md) — components and data flow.
+- [`docs/api-contract.md`](docs/api-contract.md) — REST/WebSocket contract.
+- [`docs/database-schema.md`](docs/database-schema.md) — persistence contract.
+- [`docs/agent-design.md`](docs/agent-design.md) — agent and learning boundary.
+- [`docs/trading-and-risk.md`](docs/trading-and-risk.md) — ledger/risk/reward.
+- [`docs/product-and-ui.md`](docs/product-and-ui.md) — screens/interactions.
+- [`docs/deployment.md`](docs/deployment.md) — configuration and operations.
+- [`docs/decisions.md`](docs/decisions.md) — accepted architecture decisions.
+
+## Useful checks
+
+```bash
+cd frontend && pnpm lint && pnpm build
+cd backend && uv lock --check
+./scripts/generate-types.sh
+bash -n scripts/*.sh
+```
+
+`backend/requirements.txt` and
+`frontend/src/types/generated/api.ts` are generated. Change their lock/schema
+sources and regenerate rather than editing them directly.
+
 ## Safety status
 
 The system is paper-only by default. No automatic paper-to-live transition is
 allowed, and the agent can never bypass the risk layer.
+
+## Current status
+
+Foundation setup is complete. The repository does not yet connect to Groww,
+PostgreSQL, TimescaleDB, Chroma, news providers, or an LLM. `/health` and
+`/api/v1/health` are the only implemented backend endpoints; planned feature
+folders are boundaries, not completed features.

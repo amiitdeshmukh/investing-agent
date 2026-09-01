@@ -1,5 +1,8 @@
 # Investing Agent — Project Definition
 
+**Document role:** authoritative product scope and delivery contract.
+**Current status:** foundation complete; Phase 1 implementation has not begun.
+
 ## Product vision
 
 Investing Agent is a single-user research and paper-trading platform. An AI
@@ -29,6 +32,14 @@ buy-and-hold benchmark while respecting strict loss and exposure limits?
 8. Compare LLM-reflection and reinforcement-learning agent versions, with safe
    activation and rollback.
 
+## Success measures
+
+The system is evaluated on more than raw return. Primary measures are net return
+after simulated costs, Sharpe ratio, Sortino ratio, maximum drawdown, win rate,
+turnover/overtrading, confidence calibration, and delta versus Nifty 50
+buy-and-hold over the same dates and starting capital. Backtest, paper, and any
+future live results remain clearly separated.
+
 ## Users and operation
 
 Version 1 is a personal, single-user system. Authentication uses a server-side
@@ -52,6 +63,39 @@ part of the initial implementation.
 - REST under `/api/v1` handles queries and commands. One WebSocket at `/ws/live`
   carries all live frontend events.
 
+## Locked technology stack
+
+- Frontend: Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui,
+  Recharts, and Sonner; pnpm manages packages.
+- Backend: Python, FastAPI, Pydantic, and uv. LangGraph enters with the agent
+  phase; vectorbt and FinRL enter only in their planned phases.
+- Data: PostgreSQL 16, TimescaleDB for prices, and Chroma as a rebuildable vector
+  index.
+- Contracts: Pydantic/OpenAPI is authoritative, with generated TypeScript types.
+- Integrations: Groww documented HTTP/streaming APIs, not its SDK. The news API
+  vendor is deliberately deferred until Phase 7.
+- Runtime: separate frontend/backend processes in one repository; no Docker.
+
+## Primary domain records
+
+The target system records tickers, price ticks, news, macro events, immutable
+agent versions, every decision, paper trades, portfolio snapshots, risk rules,
+and knowledge entries. PostgreSQL is authoritative. Chroma stores derived
+vectors linked back to PostgreSQL content.
+
+## Core operating flow
+
+1. Ingestion normalizes timestamped provider data and stores it idempotently.
+2. A scheduled cycle assembles market, portfolio, news, macro, and retrieved
+   knowledge context for a ticker.
+3. The active agent returns a schema-validated buy/sell/hold proposal.
+4. The proposal is persisted before action.
+5. Holds stop after logging; buys/sells enter deterministic risk checks.
+6. Rejections are persisted. Only approvals reach paper execution.
+7. Execution atomically updates trade, cash/position state, and snapshots.
+8. Close computes reward and produces a retrievable lesson.
+9. Analytics compare performance, calibration, versions, and Nifty 50.
+
 ## Non-negotiable safety rules
 
 - The system starts in `paper` mode.
@@ -64,6 +108,22 @@ part of the initial implementation.
   human confirmation.
 - Benchmark underperformance remains visible.
 - The reward function keeps its asymmetric drawdown penalty.
+
+The locked close-trade reward is:
+
+```text
+raw_return_pct = (exit_price - entry_price) / entry_price
+                 * (1 if side == "buy" else -1)
+risk_adjusted = raw_return_pct / max(position_volatility, epsilon)
+drawdown_penalty = -2.0 * max(0, max_unrealized_loss_during_trade_pct)
+overtrade_penalty = -0.1 * max(0, trades_today_for_ticker - 1)
+oversize_penalty = -1.5 * max(0, position_size_pct - max_position_pct)
+reward_score = risk_adjusted + drawdown_penalty
+               + overtrade_penalty + oversize_penalty
+```
+
+The `-2.0` loss/drawdown asymmetry is intentional and cannot be simplified to
+raw P&L.
 
 ## Authoritative build order
 
@@ -78,12 +138,40 @@ part of the initial implementation.
 9. Agent versioning, rollback, and calibration tracking.
 10. Complete UI build-out in the specified screen order.
 
+Every phase must leave a tested, usable boundary. Automated paper execution
+cannot precede risk enforcement. RL cannot precede a stable ledger, reward,
+backtest path, and data-quality baseline.
+
 ## Foundation milestone
 
 The current milestone establishes one repository, separate generated frontend
 and backend applications, agreed package boundaries, environment templates,
 documentation contracts, and validation commands. Empty module boundaries are
 intentional; feature implementation begins only with Phase 1.
+
+Foundation acceptance criteria already met:
+
+- one public repository at `amiitdeshmukh/investing-agent`;
+- separate generated Next.js and FastAPI applications;
+- pnpm and uv lockfiles plus generated compatibility requirements;
+- credential-free environment templates;
+- documented module/route boundaries and OpenAPI type generation; and
+- passing frontend lint/build and backend health checks.
+
+## User interface scope
+
+The desktop v1 includes Dashboard, Watchlist/ticker detail, Positions/Trade Log
+and trade detail, News & Macro, Knowledge Base, Analytics, Agent Versions, Risk
+Console, and Agent Config. It supports widths down to 1024px, uses a collapsible
+sidebar, always exposes operating mode, and opens one app-wide WebSocket. Exact
+layout and interactions live in `docs/product-and-ui.md`.
+
+## API scope
+
+The planned API covers portfolio summary/history, positions, trades, decisions,
+watchlist, news, macro events, knowledge entries, performance/calibration/
+benchmark analytics, agent versions, async backtests, risk rules, and confirmed
+mode changes. Exact methods and paths live in `docs/api-contract.md`.
 
 ## Out of scope for v1
 
@@ -92,3 +180,13 @@ intentional; feature implementation begins only with Phase 1.
 - A mobile-specific interface below 1024px.
 - Reference document uploads; v1 accepts pasted text and source metadata.
 - Premature installation of AI, trading, database, or vendor SDK dependencies.
+
+Also excluded are GraphQL, gRPC, multi-repository service splitting,
+agent-controlled risk changes, hidden benchmarks, and unlabelled mixing of
+backtest and paper results.
+
+## Document map
+
+Use `docs/README.md` to select a detailed contract. `PROJECT.md` defines what is
+built; topic documents define boundary behavior; nested `AGENTS.md` files define
+how code under their subtree is changed.

@@ -1,5 +1,9 @@
 # Product and UI Specification
 
+**Target-state contract.** Only a project-specific foundation page is currently
+implemented. Route directories without `page.tsx` are planned boundaries, not
+working screens.
+
 ## Global layout
 
 The product is desktop-first and supports viewports down to 1024px. The global
@@ -22,6 +26,17 @@ The top bar contains the sidebar control, page title/breadcrumb, persistent mode
 badge, portfolio value and today's P&L, notification sheet, and command palette.
 Paper mode uses a blue `PAPER TRADING` badge. Any future live mode uses a red
 `LIVE — REAL MONEY` badge and opens an explicit confirmation dialog.
+
+The top bar order is fixed: sidebar toggle; breadcrumb/page title; flexible
+spacer; mode badge/button; portfolio value and today's P&L badge; notification
+bell with unread indicator opening a right-side Sheet; and command-palette
+trigger. The command palette uses the platform shortcut display (for example
+`⌘K`) but remains keyboard/platform accessible.
+
+The sidebar order is logo/app name; labelled nav groups; then pinned collapse,
+settings, and help controls. Active navigation uses a subtle background and left
+accent. Collapse preference persists in local storage; below 1024px it
+auto-collapses.
 
 ## Routes and screens
 
@@ -90,3 +105,51 @@ clearly labelled as backtest rather than paper performance.
 - Sonner toasts are for background completions, not visible synchronous results.
 - Live-updating open-position rows navigate to detail rather than expanding.
 - All controls remain keyboard accessible and expose meaningful labels.
+
+## Data and state rules
+
+- REST owns initial and recovery state. One provider owns `/ws/live` and routes
+  consume its typed events.
+- After reconnect, refetch affected REST resources instead of assuming events
+  were replayed.
+- Generated API types are mandatory; display formatting does not change
+  authoritative decimal values.
+- Filters that should survive navigation belong in URL search parameters.
+- Sidebar collapse may live locally; portfolio, risk, mode, and version state
+  must come from the backend.
+- All timestamps display clearly in the user's configured timezone while
+  preserving UTC transport values.
+
+## Visual semantics
+
+- Buy/positive values use green; sell/loss/destructive values use red, but color
+  is never the only indicator.
+- Action and status badges include text. Confidence uses a labelled progress
+  representation.
+- Risk progress is normal below 80%, amber from 80% to below the limit, and red
+  at/above the limit.
+- News categories are macro blue, geopolitical purple, weather cyan, and company
+  slate. Sentiment includes dot plus Positive/Neutral/Negative label.
+- Charts include titles, units, accessible descriptions/tooltips, range state,
+  and honest empty/insufficient-data handling.
+
+## Screen-specific acceptance
+
+- Dashboard decision rows show ticker/action/confidence/time and expand reasoning
+  without navigation; the five-row limit and empty message are explicit.
+- Watchlist add uses debounced symbol lookup; removal confirms; ticker detail
+  shows candles, five related news items, and latest agent view when available.
+- Open positions update live but navigate to detail rather than expanding.
+- Trade detail ties the execution to entry reasoning, confidence/factors, entry
+  annotation, reward, lesson, and later-retrieval count.
+- Analytics always renders the Nifty 50 line and gives calibration a full-width
+  row with perfect-calibration reference and sample sizes.
+- Risk opens as status, not an edit form; rule editing starts collapsed.
+- Backtest results say `Backtest Result — not live performance` prominently.
+
+## Screen completion checklist
+
+A route is complete only with the specified layout/content, typed REST data,
+single-socket updates where relevant, loading/error/empty/populated states,
+confirmations, keyboard/focus behavior, 1024px layout verification, and tests.
+Static mock cards or an empty route folder do not satisfy completion.

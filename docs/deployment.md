@@ -1,5 +1,8 @@
 # Deployment and Operations
 
+**Target-state contract.** Production deployment is not configured. Today the
+repository supports direct local Next.js and FastAPI processes only.
+
 ## Deployment model
 
 Docker is intentionally excluded. The frontend and backend run as independent
@@ -51,3 +54,39 @@ decisions from executing because they cannot be audited. Chroma unavailability
 may disable retrieval but must be surfaced; it must not silently fabricate
 knowledge. Provider outages back off within rate limits and do not trigger
 unbounded retries.
+
+## Configuration ownership
+
+- Frontend receives public API and WebSocket origins only.
+- Backend non-secret config includes environment, prefix, allowed origin, market
+  timezone, paper balance, and enabled capabilities.
+- Backend secrets include database/Chroma credentials, session/password data,
+  Groww HTTP credentials, and model credentials.
+
+Production rejects placeholders for enabled features. CORS is restricted to the
+configured frontend; session cookies use secure, HTTP-only, appropriate same-
+site settings. A `mode` value alone never enables real-order capability.
+
+## Readiness and observability
+
+Process `/health` is currently shallow. Dependency readiness is added with
+PostgreSQL/Chroma/providers and distinguishes required from optional services.
+Metrics cover API latency/errors, provider throttling, tick age, decision schema
+failures, risk rejects/halts, ledger failures, WebSocket reconnects, job age,
+and dependency availability.
+
+## Backup and recovery
+
+Back up PostgreSQL before risky migrations and on a documented schedule; test
+restore. Chroma can be rebuilt from PostgreSQL knowledge content. Dependency
+failure cannot replace portfolio history with empty state.
+
+## Current local commands and deferred choices
+
+```bash
+cd frontend && pnpm dev
+cd backend && uv run fastapi dev app/main.py
+```
+
+No deployment provider, CI platform, supervisor, scheduler, or queue is selected
+yet. Choose them through an ADR when required.

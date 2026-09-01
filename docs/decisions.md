@@ -1,5 +1,9 @@
 # Architecture Decision Record
 
+All entries below are **accepted and locked** unless a later numbered ADR
+explicitly supersedes one. The repository is currently at the foundation
+milestone; acceptance of a technology does not mean its phase is implemented.
+
 This file records accepted decisions. New entries include date, context,
 decision, and consequences. Existing decisions are not silently rewritten after
 implementation depends on them.
@@ -70,3 +74,45 @@ daily-loss halts survive process behavior; automatic graduation is prohibited.
 
 **Consequences:** Local and production environments run applications and data
 services directly through host tooling and must document prerequisites.
+
+## ADR-009 — Single-user session authentication
+
+**Decision:** Version 1 uses a server-side session cookie and an environment-
+configured password/hash. It does not build multi-user identity infrastructure.
+
+**Consequences:** State-changing commands authenticate server-side and apply
+CSRF/session-cookie protections. Roles, signup, account recovery, tenancy, and
+billing are out of scope.
+
+## ADR-010 — Pydantic/OpenAPI contract generation
+
+**Decision:** Pydantic models are the API shape source of truth. OpenAPI is
+generated from FastAPI and converted to TypeScript by
+`scripts/generate-types.sh`.
+
+**Consequences:** Generated TypeScript is never edited manually. API changes and
+generated output ship together and must pass the frontend build.
+
+## ADR-011 — Locked asymmetric reward
+
+**Decision:** Trade-close reward is volatility-adjusted return plus drawdown,
+overtrade, and oversize penalties. Drawdown uses the locked `-2.0` coefficient.
+
+**Consequences:** The same implementation feeds paper reflection, backtests,
+analytics, and RL training. It cannot be replaced by raw P&L or made symmetric
+without an explicit product decision.
+
+## ADR-012 — News vendor deferred
+
+**Decision:** Select the news/macro provider during Phase 7 rather than adding a
+premature dependency during foundation work.
+
+**Consequences:** The ingestion boundary and normalized schema are stable while
+vendor-specific authentication, limits, and payload mapping wait for a sourced
+comparison at implementation time.
+
+## ADR change template
+
+Future entries include status/date, context, decision, alternatives considered,
+consequences, migration impact, and any superseded ADR. Do not rewrite prior
+history to make a changed decision appear original.

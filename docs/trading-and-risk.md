@@ -1,5 +1,8 @@
 # Trading, Portfolio, Reward, and Risk
 
+**Target-state contract.** These modules are not implemented. Manual paper
+trading begins in Phase 1; automated execution waits for Phase 4 risk controls.
+
 ## Paper ledger
 
 The ledger simulates executions using exact decimal arithmetic. It records the
@@ -76,3 +79,47 @@ reward feeds both reflection and later RL training.
 Evaluation compares the agent portfolio with a Nifty 50 buy-and-hold curve over
 the same dates and starting capital. Costs, missing sessions, and cash flows
 must be treated consistently. Underperformance is never hidden.
+
+## Ledger invariants
+
+Commands carry idempotency/correlation keys. Cash and inventory cannot become
+negative unless a future accepted short/margin model explicitly permits it.
+Until then, sells cannot exceed owned inventory. Additions, partial closes, and
+weighted-average entry behavior must be specified/tested. Every mutation writes
+a portfolio snapshot in the same transaction.
+
+## Risk evaluation details
+
+Checks evaluate the post-trade portfolio, not only requested size. Applicable
+global/ticker/sector rules are resolved deterministically and the exact values
+used are auditable. Missing price, stale price, unavailable persistence,
+uncertain exposure/rules, or an active halt fails closed. Confidence never
+changes rule outcomes.
+
+The daily halt covers opening/increasing manual and agent actions. An explicitly
+defined risk-reducing close may be allowed but requires tests. Session reset uses
+the configured Indian exchange calendar/timezone, never server-local midnight.
+
+## Reward reproducibility
+
+`position_volatility`, epsilon, maximum unrealized loss, position size, and
+per-ticker daily trade count have one canonical implementation shared by paper
+close, backtest, analytics, and RL data. Percentage units are decimal fractions.
+Persist every input required to reproduce a reward.
+
+## Fees and slippage
+
+Costs are explicit versioned assumptions. Record observed reference price and
+simulated execution effects without double-counting. Paper and backtest use
+comparable assumptions. A temporary zero-cost setting is visibly labelled and
+cannot support promotion claims.
+
+## Required tests
+
+- Buy/sell signs, full/partial closes, fees/slippage, and cash invariants.
+- Position/sector boundaries immediately below, equal to, and above limits.
+- Daily halt persistence and next-session reset.
+- Stale/missing price and database failure closed behavior.
+- Exact reward terms, epsilon, asymmetric penalty, and units.
+- Duplicate idempotency keys and transactional rollback.
+- Benchmark date/start-capital/missing-session alignment.

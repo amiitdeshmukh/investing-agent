@@ -1,5 +1,9 @@
 # System Architecture
 
+**Target-state contract.** Only the foundation health routes are implemented at
+present. Components described below are introduced in the phase order from
+`../PROJECT.md`.
+
 ## Overview
 
 Investing Agent is one repository containing two runtime applications. Next.js
@@ -49,6 +53,35 @@ Routes remain thin. Domain modules call repositories through explicit services,
 and external providers are isolated behind adapters so vendor changes do not
 leak into business logic.
 
+## Repository-to-component map
+
+| Path | Target responsibility |
+|---|---|
+| `frontend/src/app/` | Route composition and route-local UI |
+| `frontend/src/components/` | Reusable UI, charts, layout, trading views |
+| `frontend/src/services/api/` | Typed REST transport |
+| `frontend/src/services/websocket/` | Single live-event transport |
+| `backend/app/api/` | REST/WebSocket adapters and dependencies |
+| `backend/app/ingestion/` | Groww/news/macro provider adapters |
+| `backend/app/agents/` | Reflection, debate, and RL proposal workflows |
+| `backend/app/trading/` | Execution, ledger, portfolio, positions |
+| `backend/app/risk/` | Deterministic risk policy |
+| `backend/app/reward/` | Locked reward calculation |
+| `backend/app/intelligence/` | Knowledge, retrieval, lessons |
+| `backend/app/backtesting/` | Isolated historical evaluation jobs |
+| `backend/app/analytics/` | Performance, benchmark, calibration |
+| `backend/app/database/` | Sessions, models, repositories |
+| `backend/app/schemas/` | Pydantic boundary contracts |
+| `database/` | Ordered SQL migrations and development seeds |
+
+## Dependency direction
+
+Transport/provider adapters depend on typed application/domain services.
+Deterministic trading/risk/reward code cannot depend on FastAPI routes, an LLM,
+or provider payload shapes. Repository implementations depend on database
+infrastructure; callers depend on explicit repository interfaces. The frontend
+depends on generated API types and never imports backend Python implementation.
+
 ## Decision and execution sequence
 
 1. A scheduled cycle selects a watchlisted ticker.
@@ -70,6 +103,26 @@ for timestamped price observations. Chroma is a derived retrieval index; every
 vector points back to a PostgreSQL knowledge entry. If the vector index is lost,
 it can be rebuilt from authoritative content.
 
+Providers are data sources, not authorities for internal audit history.
+Normalized records retain source/provider time. The paper ledger is the only
+authority for simulated cash and positions. WebSocket events are delivery
+notifications and never replace persisted records.
+
+## Request and streaming flow
+
+REST reads return an authoritative snapshot. REST commands authenticate,
+validate, call a domain service, commit, and only then publish events. The
+frontend opens one `/ws/live` connection through a React provider. After a
+disconnect it refetches affected REST resources instead of deriving missed
+state from events.
+
+## Scheduling and asynchronous work
+
+Ingestion and agent cycles run outside request handlers. Backtests are created
+through REST and processed as jobs; clients poll `/backtest-jobs/{id}`. Worker
+restart must not duplicate ticks, decisions, trades, or completed jobs. The
+concrete scheduler/queue technology is deferred until implementation.
+
 ## Reliability principles
 
 - Decimal arithmetic for money and quantities.
@@ -79,6 +132,11 @@ it can be rebuilt from authoritative content.
 - WebSocket events are notifications, not the system of record; clients refetch
   REST state after reconnecting.
 - Backtests run asynchronously and never block live request workers.
+- Provider calls use timeouts, bounded backoff, rate-limit awareness, and
+  idempotency where available.
+- Missing audit persistence, stale prices, uncertain risk state, or active daily
+  halt fails closed for execution.
+- Paper state survives backend restart; memory is never its sole authority.
 
 ## Security and safety boundaries
 
@@ -87,3 +145,15 @@ never receives Groww credentials, database URLs, model keys, or the configured
 login password. LLM output is untrusted input and must pass schema and risk
 validation. Paper mode is the default and cannot change without an authenticated
 human confirmation command.
+
+The auth target is one server-side session cookie established with an
+environment-configured password/hash. Production cookies are secure and
+state-changing requests receive CSRF protection. Live broker order capability
+is absent from v1 and cannot be inferred from the presence of a `mode` field.
+
+## Current foundation
+
+Implemented: repository split, Next.js shell, FastAPI configuration/CORS,
+health routes, package boundaries, environment templates, lockfiles, and
+OpenAPI-to-TypeScript generation. Not implemented: provider, persistence,
+authentication, scheduling, domain, WebSocket, and dashboard features above.
